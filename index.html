@@ -114,7 +114,7 @@
 		}
 
 		.keybindbox .content.show {
-			max-height: 185px;
+			max-height: 235px;
 		}
 
 		.toolbar {
@@ -240,7 +240,7 @@
 	</div>
 	<div class="toolbar-sub">
 		<b>Zuma Deluxe Level Editor</b>
-		<span>&nbsp;(v0.4.1 - Jan 6 2023) - created by <a href="https://github.com/alula"
+		<span>&nbsp;(v0.5.0 - Jul 19 2024) - created by <a href="https://github.com/alula"
 				target="_blank">@alula</a></span>
 	</div>
 	<div id="statusbox">
@@ -254,13 +254,16 @@
 		</div>
 		<div class="content show" id="kb-cbox">
 			<ul>
-				<li><kbd>S</kbd> to make a split between two points</li>
-				<li><kbd>D</kbd> to remove a point</li>
-				<li><kbd>P</kbd> to raise Z-index</li>
-				<li><kbd>I</kbd> to lower Z-index</li>
-				<li><kbd>R</kbd> to reset and center the view</li>
-				<li><kbd>Right Click</kbd> to drag the view</li>
-				<li><kbd>Mouse Wheel</kbd> to zoom the view</li>
+				<li><kbd>A</kbd> Append point at end</li>
+				<li><kbd>S</kbd> Split line segment</li>
+				<li><kbd>D</kbd> Delete point</li>
+				<li><kbd>P</kbd> Raise Z-index</li>
+				<li><kbd>O</kbd> Lower Z-index</li>
+				<li><kbd>R</kbd> Reset and center the view</li>
+				<li><kbd>Shift+R</kbd> Reflect curve horizontal</li>
+				<li><kbd>Shift+V</kbd> Reflect curve vertical</li>
+				<li><kbd>Right Click</kbd> Pan</li>
+				<li><kbd>Mouse Wheel</kbd> Zoom</li>
 			</ul>
 		</div>
 	</div>
@@ -269,7 +272,7 @@
 			<div class="title">Load level files</div>
 			<div class="content">
 				Load shape file: <input id="shape" type="file" accept=".dat" /><br />
-				Load background: <input id="bg" type="file" accept=".jpg,.jpeg" /><br />
+				Load background: <input id="bg" type="file" accept="image/*" /><br />
 
 				<button id="uw-close">Close</button>
 			</div>
@@ -287,6 +290,9 @@
 						type="number" min="1" max="4096" value="480" />
 
 					<button id="sw-reset">Reset to 640x480</button><br /><br />
+					
+					<b>Curve Line Size (px)</b><br />
+					<input id="sw-line-width" type="number" min="1" max="64" value="3" /><br /><br />
 
 					<input id="sw-pixellock" type="checkbox" />
 					<label for="sw-pixellock"><b>Lock points to pixels</b></label><br />
@@ -505,7 +511,13 @@
 				screenOptions.height = 480;
 				screenOptions.pixelLock = true;
 			}
+			
+			if ((screenOptions.version) < 2) {
+				screenOptions.version = 2;
+				screenOptions.line_width = 3;
+			}
 
+			$("#sw-line-width").value = screenOptions.line_width;
 			$("#sw-width").value = screenOptions.width;
 			$("#sw-height").value = screenOptions.height;
 			$("#sw-pixellock").checked = screenOptions.pixelLock;
@@ -613,6 +625,10 @@
 
 			$("#sw-height").onchange = (e) => {
 				screenOptions.height = Number(e.target.value);
+			};
+			
+			$("#sw-line-width").onchange = (e) => {
+				screenOptions.line_width = Number(e.target.value);
 			};
 
 			$("#sw-pixellock").onchange = (e) => {
@@ -788,11 +804,17 @@
 					const hDeltaY = (pt.y - prev.y) / 2;
 					const point = { x: pt.x - hDeltaX, y: pt.y - hDeltaY, z: pt.z };
 					state.points.splice(state.selectedPoint, 0, point);
+					state.selectedPoint++;
 				} else if (e.key === "d" && state.selectedPoint !== -1 && state.points.length > 2) {
 					if (state.selectedPoint == (state.points.length - 1)) {
-						state.selectedPoint = state.points.length - 2;
+						state.selectedPoint--;
+						state.points.splice(-1, 1);
 					}
-					state.points.splice(state.selectedPoint, 1);
+					else
+					{
+						state.points.splice(state.selectedPoint, 1);
+					}
+					
 				} else if (e.key === "o" && state.selectedPoint !== -1) {
 					const pt = state.points[state.selectedPoint];
 					if (pt.z > 0) {
@@ -810,7 +832,22 @@
 					yVel = 0;
 					scale = 1.0;
 					scaleTarget = 1.0;
+				} else if (e.key === "a" && state.selectedPoint > 0) {
+					const i = state.selectedPoint;
+					const pt_x = clampF32((mousePos[0] - xOff)  / scale);
+					const pt_y = clampF32((mousePos[1] - yOff)  / scale);
+					
+					const pt = state.points[i];
+					const point = { x: pt_x, y: pt_y, z: pt.z };
+					state.points.push(point);
 				}
+				else if (e.key === "R") {
+					state.points.forEach((e) => e.x = screenOptions.width - e.x -1);
+				}
+				else if (e.key === "V") {
+					state.points.forEach((e) => e.y = screenOptions.width - e.y -1);
+				}
+				
 			};
 
 			const colorSchemes = [
@@ -864,7 +901,8 @@
 				if (state.points.length !== 0) {
 					if (state.points.length >= 2) {
 						const pts = getCurvePoints(state.points);
-						ctx.lineWidth = 3;
+						ctx.lineWidth = (screenOptions.line_width || 3);
+						ctx.globalAlpha = 0.7;
 						ctx.strokeStyle = "#444444";
 						ctx.beginPath();
 						ctx.moveTo(pts[0], pts[1]);
