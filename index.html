@@ -293,6 +293,9 @@
 					
 					<b>Curve Line Size (px)</b><br />
 					<input id="sw-line-width" type="number" min="1" max="64" value="3" /><br /><br />
+					
+					<b>Curve Max Precision (segments)</b><br />
+					<input id="sw-curve-precision" type="number" min="1" max="1000" value="32" /><br /><br />
 
 					<input id="sw-pixellock" type="checkbox" />
 					<label for="sw-pixellock"><b>Lock points to pixels</b></label><br />
@@ -386,7 +389,7 @@
 
 			const getDeltas = (pts) => {
 				let tension = 0.5;
-				let numOfSegments = 256;
+				let numOfSegments = screenOptions.curve_precision || 32;
 				let _pts = [], linePoints = [],    // clone array
 					x, y,           // our x,y coords
 					t1x, t2x, t1y, t2y, // tension vectors
@@ -525,8 +528,10 @@
 			if ((screenOptions.version) < 2) {
 				screenOptions.version = 2;
 				screenOptions.line_width = 3;
+				screenOptions.curve_precision = 32;
 			}
 
+			$("#sw-curve-precision").value = screenOptions.curve_precision || 32;
 			$("#sw-line-width").value = screenOptions.line_width || 3;
 			$("#sw-width").value = screenOptions.width || 640;
 			$("#sw-height").value = screenOptions.height || 480;
@@ -639,6 +644,10 @@
 			
 			$("#sw-line-width").onchange = (e) => {
 				screenOptions.line_width = Number(e.target.value);
+			};
+			
+			$("#sw-curve-precision").onchange = (e) => {
+				screenOptions.curve_precision = Number(e.target.value);
 			};
 
 			$("#sw-pixellock").onchange = (e) => {
@@ -910,7 +919,7 @@
 				let prev = null;
 				if (state.points.length !== 0) {
 					if (state.points.length >= 2) {
-						const pts = getCurvePoints(state.points);
+						const pts = getCurvePoints(state.points, screenOptions.curve_precision);
 						ctx.lineWidth = (screenOptions.line_width || 3);
 						ctx.globalAlpha = 0.7;
 						ctx.strokeStyle = "#444444";
