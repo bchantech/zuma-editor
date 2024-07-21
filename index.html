@@ -527,10 +527,10 @@
 				screenOptions.line_width = 3;
 			}
 
-			$("#sw-line-width").value = screenOptions.line_width;
-			$("#sw-width").value = screenOptions.width;
-			$("#sw-height").value = screenOptions.height;
-			$("#sw-pixellock").checked = screenOptions.pixelLock;
+			$("#sw-line-width").value = screenOptions.line_width || 3;
+			$("#sw-width").value = screenOptions.width || 640;
+			$("#sw-height").value = screenOptions.height || 480;
+			$("#sw-pixellock").checked = screenOptions.pixelLock || false;
 
 			let mousePos = [0, 0];
 			let mousePosPrev = [0, 0];
