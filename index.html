@@ -298,6 +298,9 @@
 
 					<input id="sw-pixellock" type="checkbox" />
 					<label for="sw-pixellock"><b>Lock points to pixel grid <sup title="If disabled, the level points won't be clamped to pixel grid">&#9432;</sup></b></label><br /><br />
+
+					<input id="sw-autosave" type="checkbox" />
+					<label for="sw-autosave"><b>Autosave curve on close</b></label><br /><br />
 				</div>
 
 				<button id="sw-close">Close</button>
@@ -526,6 +529,14 @@
 				screenOptions.version = 2;
 				screenOptions.line_width = 3;
 				screenOptions.curve_precision = 32;
+				screenOptions.autosave = true;
+			}
+			
+			// load points if present
+			let loadedPoints = getStorage("map-data");
+			if (loadedPoints && screenOptions.autosave) {
+				state.points = loadedPoints;
+				state.selectedPoint = -1;
 			}
 
 			$("#sw-curve-precision").value = screenOptions.curve_precision || 32;
@@ -533,6 +544,7 @@
 			$("#sw-width").value = screenOptions.width || 640;
 			$("#sw-height").value = screenOptions.height || 480;
 			$("#sw-pixellock").checked = screenOptions.pixelLock || false;
+			$("#sw-autosave").checked = screenOptions.autosave || true;
 
 			let mousePos = [0, 0];
 			let mousePosPrev = [0, 0];
@@ -649,6 +661,10 @@
 
 			$("#sw-pixellock").onchange = (e) => {
 				screenOptions.pixelLock = e.target.checked;
+			}
+			
+			$("#sw-autosave").onchange = (e) => {
+				screenOptions.autosave = e.target.checked;
 			}
 
 			$("#sw-reset").onclick = (e) => {
@@ -809,6 +825,10 @@
 			mainEl.onwheel = (e) => {
 				e.preventDefault();
 				scaleTarget = Math.max(0.25, Math.min(10, scaleTarget + e.deltaY / 500));
+			}
+			
+			window.onunload = (e) => {
+				setStorage("map-data", state.points);
 			}
 
 			document.onkeydown = (e) => {
