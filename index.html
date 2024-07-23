@@ -226,11 +226,11 @@
 			<img alt="" title="Save" width="24px" height="24px"
 				src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAAA7ElEQVR4nO2WsQrCMBRF8zVC3ZQ39C8c/R3BxbWTb7X+gJsU1EWEbrGDINRd/6BjRESoEJDaJCb1HrhzOdz7aIQAAAAvIS7VK9Ek02a1OxgL1b5H83IWtgAbkDAt0BvGb/kowC0lvBDgFhLeCPCXEl4JcKkgEKGBGBNqRP2A+tOtdkKL9d7ITyzNcrtHPEgKrcQo2bSWSLNcjZcnuwI+RECA0YDChJrQqSMubpVyzfFamRP4FQQB1jcgzxcrcdZA8AKuIAhwRyckQxdwBUGAOzohGbqAKwgC/Gzg8bR1jTT5nPYh4u8EAABAuOAOASTBaeDBltsAAAAASUVORK5CYII=">
 		</button>
-		<button disabled>
+		<button id="btn-undo">
 			<img alt="" title="Undo" width="24px" height="24px"
 				src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAABlUlEQVR4nO2YS0rDUBSG/4E6UQRdg6+5EweiDsSBC3EBQnUhFd2DoDiSmnOTIAVHHWjuSS0uQhEdKRhJfIC2JbG9Tc6V+8GZNv/fnGcAh8Ph+B/48TashXgHxK+wjjAcA+kDKE6ysIoGz4I4+BZvlQEvngdx54d4awz4egvED13irTBAWbG+9BQv2kCYFWu9r3DRBprRDJRWueKLxzMU337+5j4a0dLoxIc89/EwY+L7xRWIV82Kp3gTxPcliE+yIP0G4iMc88Toi3W0Ri6zGWOtAZWGbg7/JspOIdUVh7CoiJOeNeG1VyS20T+Y4ADiBtnF9ST8eA2KTwqZ8G8WIXaVIN4tUNB7EL3MEZ/mpJEH0eu0F63nGOhA9EET8lRON3oyrt3oSXl+N51TA48QfdST3qgmhUx9VlH6rPwiNgXpWoGJXIMo0kGWpU3OP6++DLQXqpaMwdcJrSCCQZe5IFqGxQbqEEMlB011BsLhT0rTFM150nW0WuMQR5FuE0gp2F78Xs7SMzWdsKRrMvq8w+FwOGAp71hZJyyROa1CAAAAAElFTkSuQmCC">
 		</button>
-		<button disabled>
+		<button id="btn-redo">
 			<img alt="" title="Redo" width="24px" height="24px"
 				src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAABpUlEQVR4nO2YzS4EQRSFz2ZsWBFewc8aK8Qa7yKxMJ6ECE9AWMrM3NsIlh0Zc+/4Cy8xLEVLd0hkZKZ7+m+qor6ktpVzbtWpulWAw+Fw/D+89hqshvUDrFVYC2sQDdJDHOkIrDXAkYkb1JtTsNYAR+MVrHOw2EAAkg5INmCtAY6GJeHubSD4zsUBfL9SvJCGzIJ0BywM0kewvseKSzzkGme3k8UIZ10E6Xl+YrXXSrxERcqN8Mxm2QfJZ+Hi+Xe4W+vZxdP9BEiuShPO3eGWzfTiw0CxXgxJfJDdQLhthiWesm6hKLAl7nnOO8Ssl8OpvuRwjIbuky3zMbi9jHpzNGFRSrrIKLykYis1eLhKayVYOLbyqeYtq5ljeY5Z6iWz22mSt74Gku75bkp70JB0+hq40LFU85b2pGR56mvAa6+km7esvp9jQsx6Yva3Cms1wZm9BWOptWaSXWR6CpLV1KEulCxdqBGQLKRu5oyBdM9uA75fSfUGNoqajg/cWhuHHz0tdxNnwlgarXmQePYa+MG7mwbLNkgbYH340/w5HA6Hw4Fi+QJQaihUhFtWdAAAAABJRU5ErkJggg==">
 		</button>
@@ -477,6 +477,14 @@
 				return deltas;
 			};
 
+			const saveUndoBuffer = (data) => {
+				let data2 = JSON.parse(JSON.stringify(state.points));
+				undoBuffer.push(data2);
+				redoBuffer = [];
+				$("#btn-undo").disabled = false;
+				$("#btn-redo").disabled = true;
+			};
+
 			const clamp = (num, max, min) => Math.max(max, Math.min(min, num));
 			const $ = (e) => document.querySelector(e);
 			let state = {
@@ -546,6 +554,11 @@
 			$("#sw-height").value = screenOptions.height || 480;
 			$("#sw-pixellock").checked = screenOptions.pixelLock || false;
 			$("#sw-autosave").checked = screenOptions.autosave || true;
+			
+			$("#btn-undo").disabled = true;
+			$("#btn-redo").disabled = true;
+			let undoBuffer = [];
+			let redoBuffer = [];
 
 			let mousePos = [0, 0];
 			let mousePosPrev = [0, 0];
@@ -579,6 +592,10 @@
 				state.points = [{ x: -20, y: 50, z: 1 }, { x: 100, y: 100, z: 1 }, { x: 140, y: 200, z: 1 }];
 				state.deltas = [];
 				state.selectedPoint = -1;
+				undoBuffer = [];
+				redoBuffer = [];
+				$("#btn-undo").disabled = true;
+				$("#btn-redo").disabled = true;
 			};
 
 			$("#btn-save").onclick = () => {
@@ -640,6 +657,32 @@
 				uploadOvl.style.display = "none";
 			};
 
+			$("#btn-undo").onclick = () => {
+				if (undoBuffer.length > 0) {
+					state.selectedPoint = -1;
+					redoBuffer.push(state.points);
+					state.points = undoBuffer.pop();
+					$("#btn-redo").disabled = false;
+					
+					if (undoBuffer.length < 1) {
+						$("#btn-undo").disabled = true;
+					}
+				}
+			};
+			
+			$("#btn-redo").onclick = () => {
+				if (redoBuffer.length > 0) {
+					state.selectedPoint = -1;
+					undoBuffer.push(state.points);
+					state.points = redoBuffer.pop();
+					$("#btn-undo").disabled = false;
+					
+					if (redoBuffer.length < 1) {
+						$("#btn-redo").disabled = true;
+					}
+				}
+			};
+			
 			$("#btn-settings").onclick = () => {
 				settingsOvl.style.display = "";
 			};
@@ -774,6 +817,7 @@
 				e.preventDefault();
 				if (e.button === 0) {
 					state.dragging = false;
+					state.savePreDrag = false;
 					state.selectedPoint = -1;
 					const x = (e.offsetX - xOff) / scale;
 					const y = (e.offsetY - yOff) / scale;
@@ -783,6 +827,7 @@
 						if (x >= (pt.x - 3) && x <= (pt.x + 3) && y >= (pt.y - 3) && y <= (pt.y + 3)) {
 							state.selectedPoint = i;
 							state.dragging = true;
+							state.savePreDrag = true;
 							break;
 						}
 					}
@@ -809,6 +854,10 @@
 				mousePos[1] = e.offsetY;
 
 				if (state.dragging && state.selectedPoint !== -1) {
+					if (state.savePreDrag) {
+						saveUndoBuffer(state.points);
+						state.savePreDrag = false;
+					}
 					const i = state.selectedPoint;
 					let x = (e.offsetX - xOff) / scale;
 					let y = (e.offsetY - yOff) / scale;
@@ -840,9 +889,11 @@
 					const hDeltaX = (pt.x - prev.x) / 2;
 					const hDeltaY = (pt.y - prev.y) / 2;
 					const point = { x: pt.x - hDeltaX, y: pt.y - hDeltaY, z: pt.z };
+					saveUndoBuffer(state.points);
 					state.points.splice(state.selectedPoint, 0, point);
 					state.selectedPoint++;
 				} else if (e.key === "d" && state.selectedPoint !== -1 && state.points.length > 2) {
+					saveUndoBuffer(state.points);
 					if (state.selectedPoint == (state.points.length - 1)) {
 						state.selectedPoint--;
 						state.points.splice(-1, 1);
@@ -876,12 +927,15 @@
 					
 					const pt = state.points[i];
 					const point = { x: pt_x, y: pt_y, z: pt.z };
+					saveUndoBuffer(state.points);
 					state.points.push(point);
 				}
 				else if (e.key === "R") {
+					saveUndoBuffer(state.points);
 					state.points.forEach((e) => e.x = screenOptions.width - e.x -1);
 				}
 				else if (e.key === "V") {
+					saveUndoBuffer(state.points);
 					state.points.forEach((e) => e.y = screenOptions.height - e.y -1);
 				}
 				
