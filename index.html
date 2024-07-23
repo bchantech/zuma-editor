@@ -432,7 +432,7 @@
 						linePoints.push({ x: x, y: y, z: pts[i / 2 - 1].z });
 						if (linePoints.length > 1) {
 							// discard the current point if it is very close to the previous point
-							if ((x - linePoints[linePoints.length - 2].x < 0.5) && (y - linePoints[linePoints.length - 2].y < 0.5)) {
+							if ((Math.abs(x - linePoints[linePoints.length - 2].x) < 0.5) && (Math.abs(y - linePoints[linePoints.length - 2].y) < 0.5)) {
 								linePoints.pop();
 							}
 						}
