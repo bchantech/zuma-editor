@@ -1023,21 +1023,22 @@
 					ctx.lineWidth = 1;
 
 					let tunnel = false;
+					let next_color = [];
+					
 					for (let i = 0; i < state.points.length; i++) {
 						const pt = state.points[i];
-						const colors = colorSchemes[pt.z % colorSchemes.length];
-
 						if (prev != null) {
-							ctx.strokeStyle = state.selectedPoint === i ? colors[1] : colors[0];
 							ctx.beginPath();
 							if (tunnel == true) { ctx.setLineDash([3, 3]); } 
 							else { ctx.setLineDash([]); }
+							ctx.strokeStyle = next_color[0];
+							if (state.selectedPoint === i) { ctx.strokeStyle = "#ffffff";}
 							ctx.moveTo(prev.x, prev.y);
 							ctx.lineTo(pt.x, pt.y);
 							ctx.stroke();
 
 							// draw vector direction
-							ctx.strokeStyle = colors[1];
+							ctx.strokeStyle = next_color[1];
 							let angle = Math.atan2(pt.y - prev.y, pt.x - prev.x);
 							let hDeltaX = (pt.x - prev.x) / 2;
 							let hDeltaY = (pt.y - prev.y) / 2;
@@ -1058,6 +1059,10 @@
 						// change tunnel state
 						if (pt.t == 1) { tunnel = true; } 
 						else { tunnel = false; }
+						
+						// change path color
+						next_color = colorSchemes[pt.z % colorSchemes.length];
+						
 						prev = pt;
 					}
 
