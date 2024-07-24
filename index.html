@@ -759,7 +759,7 @@
 				
 				// ZR Map Support: Read the version number first.
 				const curveVersion = dv.getUint32(4, true);
-				let curveOffset = 0x0f;
+				let curveOffset = 0x10;
 				if (curveVersion >= 12) {	
 					curveOffset = 0xc4;
 				}
