@@ -938,15 +938,15 @@
 					yVel = 0;
 					scale = 1.0;
 					scaleTarget = 1.0;
-				} else if (e.key === "a" && state.selectedPoint > 0) {
-					const i = state.selectedPoint;
+				} else if (e.key === "a" && state.points.length > 0) {
 					const pt_x = clampF32((mousePos[0] - xOff)  / scale);
 					const pt_y = clampF32((mousePos[1] - yOff)  / scale);
 					
-					const pt = state.points[i];
+					const pt = state.points[state.points.length-1];
 					const point = { x: pt_x, y: pt_y, z: pt.z, t: pt.t };
 					saveUndoBuffer(state.points);
 					state.points.push(point);
+					state.selectedPoint = state.points.length-1;
 				}
 				else if (e.key === "R") {
 					saveUndoBuffer(state.points);
