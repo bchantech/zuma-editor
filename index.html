@@ -543,11 +543,14 @@
 				screenOptions.autosave = true;
 			}
 			
+			$("#btn-save").disabled = true;
+			
 			// load points if present
 			let loadedPoints = getStorage("map-data");
 			if (loadedPoints && screenOptions.autosave) {
 				state.points = loadedPoints;
 				state.selectedPoint = -1;
+				$("#btn-save").disabled = false;
 			}
 
 			$("#sw-curve-precision").value = screenOptions.curve_precision || 32;
@@ -598,6 +601,7 @@
 				redoBuffer = [];
 				$("#btn-undo").disabled = true;
 				$("#btn-redo").disabled = true;
+				$("#btn-save").disabled = false;
 			};
 
 			$("#btn-save").onclick = () => {
@@ -806,11 +810,14 @@
 						// console.log(delta.x / 100, delta.y / 100, dist);
 						state.deltas.push(delta);
 					}
+					$("#btn-save").disabled = false;
+					
 				} catch (error) {
 					setErr("Map is corrupt!");
 					state.points = [];
 					state.deltas = [];
 					state.selectedPoint = -1;
+					$("#btn-save").disabled = true;
 				}
 
 			};
