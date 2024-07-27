@@ -771,39 +771,46 @@
 					setErr("A valid level should contain at least two points!");
 					return;
 				}
+				
+				try {
+					for (let i = 0; i < pointCount; i++) {
+						let idx = i * 10 + 4 + curveOffset;
+						let point = {
+							x: dv.getInt32(idx, true),
+							y: dv.getInt32(idx + 4, true),
+							z: dv.getUint8(idx + 9, true),
+							t: dv.getUint8(idx + 8, true),
+						};
+						// unroll list of point flags
+						if (point.t >= 4) {point.t -= 4; point.absolute = 1;}
+						if (point.t >= 2) {point.t -= 2; point.teleport = 1;}
+						state.points.push(point);
+					}
 
-				for (let i = 0; i < pointCount; i++) {
-					let idx = i * 10 + 4 + curveOffset;
-					let point = {
-						x: dv.getInt32(idx, true),
-						y: dv.getInt32(idx + 4, true),
-						z: dv.getUint8(idx + 9, true),
-						t: dv.getUint8(idx + 8, true),
-					};
-					// unroll list of point flags
-					if (point.t >= 4) {point.t -= 4; point.absolute = 1;}
-					if (point.t >= 2) {point.t -= 2; point.teleport = 1;}
-					state.points.push(point);
-				}
-
-				const off = curveOffset + 4 + (pointCount * 10);
-				const deltaCount = dv.getUint32(off, true);
-				const deltaStartX = dv.getFloat32(off + 4, true);
-				const deltaStartY = dv.getFloat32(off + 8, true);
-				console.log(deltaStartX, deltaStartY);
-				let posX = deltaStartX;
-				let posY = deltaStartY;
-				state.deltas.push({ x: posX, y: posY, z: 1, t: 0 });
-				for (let i = 1; i < deltaCount; i++) {
-					const delta = {
-						x: dv.getInt8(off + 10 + (i * 4)),
-						y: dv.getInt8(off + 11 + (i * 4)),
-						z: dv.getUint8(off + 13 + (i * 4)),
-						t: dv.getUint8(off + 12 + (i * 4)),
-					};
-					const dist = Math.sqrt(((delta.x * delta.x) / 10000) + ((delta.y * delta.y) / 10000));
-					// console.log(delta.x / 100, delta.y / 100, dist);
-					state.deltas.push(delta);
+					const off = curveOffset + 4 + (pointCount * 10);
+					const deltaCount = dv.getUint32(off, true);
+					const deltaStartX = dv.getFloat32(off + 4, true);
+					const deltaStartY = dv.getFloat32(off + 8, true);
+					console.log(deltaStartX, deltaStartY);
+					let posX = deltaStartX;
+					let posY = deltaStartY;
+					state.deltas.push({ x: posX, y: posY, z: 1, t: 0 });
+					for (let i = 1; i < deltaCount; i++) {
+						const delta = {
+							x: dv.getInt8(off + 10 + (i * 4)),
+							y: dv.getInt8(off + 11 + (i * 4)),
+							z: dv.getUint8(off + 13 + (i * 4)),
+							t: dv.getUint8(off + 12 + (i * 4)),
+						};
+						const dist = Math.sqrt(((delta.x * delta.x) / 10000) + ((delta.y * delta.y) / 10000));
+						// console.log(delta.x / 100, delta.y / 100, dist);
+						state.deltas.push(delta);
+					}
+				} catch (error) {
+					setErr("Map is corrupt!");
+					state.points = [];
+					state.deltas = [];
+					state.selectedPoint = -1;
 				}
 
 			};
