@@ -262,6 +262,7 @@
 				<li><kbd>O</kbd> Lower Z-index</li>
 				<li><kbd>T</kbd> Toggle tunnel</li>
 				<li><kbd>R</kbd> Reset and center the view</li>
+				<li><kbd>B</kbd> Toggle background</li>
 				<li><kbd>Shift+R</kbd> Reflect curve horizontal</li>
 				<li><kbd>Shift+V</kbd> Reflect curve vertical</li>
 				<li><kbd>Right Click</kbd> Pan</li>
@@ -578,6 +579,7 @@
 			let scaleTarget = 1.0;
 			const aad = (2 / 3) * Math.PI;
 			const headSize = 6;
+			let disableBackground = false;
 
 			let cBoxHidden = getStorage("keybind-hide") || false;
 			if (cBoxHidden) {
@@ -971,6 +973,10 @@
 					state.points.forEach((e) => e.y = screenOptions.height - e.y -1);
 				}
 				
+				// toggle background
+				else if (e.key === "b") {
+					disableBackground = !disableBackground;
+				}
 			};
 
 			const colorSchemes = [
@@ -1012,8 +1018,12 @@
 				ctx.save();
 				ctx.translate(xOff | 0, yOff | 0);
 				ctx.scale(scale, scale);
-				if (state.image != null && state.image.complete) {
+				if (state.image != null && state.image.complete && disableBackground == false) {
 					ctx.drawImage(state.image, 0, 0);
+				}
+				else {
+					ctx.fillStyle = "#000000";
+					ctx.fillRect(0, 0, screenOptions.width, screenOptions.height);
 				}
 
 				ctx.translate(0.5, 0.5);
