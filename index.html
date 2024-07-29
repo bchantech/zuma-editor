@@ -579,6 +579,7 @@
 			let scaleTarget = 1.0;
 			const aad = (2 / 3) * Math.PI;
 			const headSize = 6;
+			let disableRepeat = false;
 			let disableBackground = false;
 
 			let cBoxHidden = getStorage("keybind-hide") || false;
@@ -912,6 +913,7 @@
 			}
 
 			document.onkeydown = (e) => {
+				if (disableRepeat) return;
 				if (e.key === "s" && state.selectedPoint > 0) {
 					const i = state.selectedPoint;
 					const pt = state.points[i];
@@ -922,6 +924,7 @@
 					saveUndoBuffer(state.points);
 					state.points.splice(state.selectedPoint, 0, point);
 					state.selectedPoint++;
+					disableRepeat = true;
 				} else if (e.key === "d" && state.selectedPoint !== -1 && state.points.length > 2) {
 					saveUndoBuffer(state.points);
 					if (state.selectedPoint == (state.points.length - 1)) {
@@ -937,6 +940,7 @@
 					const pt = state.points[state.selectedPoint];
 					if (pt.t == 0) {pt.t = 1;}
 					else {pt.t = 0;}
+					disableRepeat = true;
 				} else if (e.key === "o" && state.selectedPoint !== -1) {
 					const pt = state.points[state.selectedPoint];
 					if (pt.z > 0) {
@@ -960,23 +964,34 @@
 					
 					const pt = state.points[state.points.length-1];
 					const point = { x: pt_x, y: pt_y, z: pt.z, t: pt.t };
-					saveUndoBuffer(state.points);
-					state.points.push(point);
-					state.selectedPoint = state.points.length-1;
+					if (pt.x != pt_x && pt.y != pt_y)
+					{
+						saveUndoBuffer(state.points);
+						state.points.push(point);
+						state.selectedPoint = state.points.length-1;
+						refreshCurveInfo();
+					}
 				}
 				else if (e.key === "R") {
 					saveUndoBuffer(state.points);
 					state.points.forEach((e) => e.x = screenOptions.width - e.x -1);
+					disableRepeat = true;
 				}
 				else if (e.key === "V") {
 					saveUndoBuffer(state.points);
 					state.points.forEach((e) => e.y = screenOptions.height - e.y -1);
+					disableRepeat = true;
 				}
 				
 				// toggle background
 				else if (e.key === "b") {
 					disableBackground = !disableBackground;
+					disableRepeat = true;
 				}
+			};
+			
+			document.onkeyup = (e) => {
+				disableRepeat = false;
 			};
 
 			const colorSchemes = [
