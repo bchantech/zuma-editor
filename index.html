@@ -459,15 +459,16 @@
 
 					const tanX = delX / dist;
 					const tanY = delY / dist;
-					for (let j = 0; j < dist; j += 100) {
-						const x = x1 + tanX * j;
-						const y = y1 + tanY * j;
+					
+					for (let j = 0; j < dist; j += 4) {
+						const x = x1 + Math.floor(tanX * j);
+						const y = y1 + Math.floor(tanY * j);
 
 						const distL = Math.sqrt((x - lx) * (x - lx) + (y - ly) * (y - ly));
 						if (distL >= 99.8) {
 							console.log(distL, x, y);
-							const dx = x - lx;
-							const dy = y - ly;
+							const dx = Math.floor(x - lx);
+							const dy = Math.floor(y - ly);
 							lx = x;
 							ly = y;
 							deltas.push({ x: dx, y: dy, z: lz, t: lt });
