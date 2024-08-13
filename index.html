@@ -258,11 +258,11 @@
 				<li><kbd>A</kbd> Append point at end</li>
 				<li><kbd>S</kbd> Split line segment</li>
 				<li><kbd>D</kbd> Delete point</li>
-				<li><kbd>P</kbd> Raise Z-index</li>
-				<li><kbd>O</kbd> Lower Z-index</li>
+				<li><kbd>O</kbd> / <kbd>P</kbd> Lower/Raise Z-index</li>
 				<li><kbd>T</kbd> Toggle tunnel</li>
 				<li><kbd>R</kbd> Reset and center the view</li>
 				<li><kbd>B</kbd> Toggle background</li>
+				<li><kbd>Z</kbd> Undo</li>
 				<li><kbd>Shift+R</kbd> Reflect curve horizontal</li>
 				<li><kbd>Shift+V</kbd> Reflect curve vertical</li>
 				<li><kbd>Right Click</kbd> Pan</li>
@@ -917,6 +917,13 @@
 			}
 
 			document.onkeydown = (e) => {
+			
+				if (e.key === "Escape") {
+					$("#uw-close").click();
+					$("#sw-close").click();
+				}
+				
+				if (settingsOvl.style.display != "none" || uploadOvl.style.display != "none" ) return;
 				if (disableRepeat) return;
 				if (e.key === "s" && state.selectedPoint > 0) {
 					const i = state.selectedPoint;
@@ -992,6 +999,11 @@
 					disableBackground = !disableBackground;
 					disableRepeat = true;
 				}
+				// Undo shortcut
+				else if (e.key === "z" ) {
+					$("#btn-undo").click();
+				}
+				
 			};
 			
 			document.onkeyup = (e) => {
