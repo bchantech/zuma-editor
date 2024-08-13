@@ -222,8 +222,8 @@
 			<img alt="" title="Open" width="24px" height="24px"
 				src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHg9IjBweCIgeT0iMHB4Igp3aWR0aD0iNDgiIGhlaWdodD0iNDgiCnZpZXdCb3g9IjAgMCA0OCA0OCI+CjxwYXRoIGZpbGw9IiNGRkEwMDAiIGQ9Ik0zOCwxMkgyMmwtNC00SDhjLTIuMiwwLTQsMS44LTQsNHYyNGMwLDIuMiwxLjgsNCw0LDRoMzFjMS43LDAsMy0xLjMsMy0zVjE2QzQyLDEzLjgsNDAuMiwxMiwzOCwxMnoiPjwvcGF0aD48cGF0aCBmaWxsPSIjRkZDQTI4IiBkPSJNNDIuMiwxOEgxNS4zYy0xLjksMC0zLjYsMS40LTMuOSwzLjNMOCw0MGgzMS43YzEuOSwwLDMuNi0xLjQsMy45LTMuM2wyLjUtMTRDNDYuNiwyMC4zLDQ0LjcsMTgsNDIuMiwxOHoiPjwvcGF0aD4KPC9zdmc+" />
 		</button>
-		<button id="btn-save">
-			<img alt="" title="Save" width="24px" height="24px"
+		<button id="btn-export">
+			<img alt="" title="Export Map" width="24px" height="24px"
 				src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAAA7ElEQVR4nO2WsQrCMBRF8zVC3ZQ39C8c/R3BxbWTb7X+gJsU1EWEbrGDINRd/6BjRESoEJDaJCb1HrhzOdz7aIQAAAAvIS7VK9Ek02a1OxgL1b5H83IWtgAbkDAt0BvGb/kowC0lvBDgFhLeCPCXEl4JcKkgEKGBGBNqRP2A+tOtdkKL9d7ITyzNcrtHPEgKrcQo2bSWSLNcjZcnuwI+RECA0YDChJrQqSMubpVyzfFamRP4FQQB1jcgzxcrcdZA8AKuIAhwRyckQxdwBUGAOzohGbqAKwgC/Gzg8bR1jTT5nPYh4u8EAABAuOAOASTBaeDBltsAAAAASUVORK5CYII=">
 		</button>
 		<button id="btn-undo">
@@ -270,6 +270,40 @@
 			</ul>
 		</div>
 	</div>
+
+	<div id="export" class="overlay" style="display:none">
+		<div class="box">
+			<div class="title">Export Map</div>
+			<div class="content">
+				Export As:
+				<select id="export_types" name="export_type" />
+				<option value="export_zuma">Zuma Deluxe Map</option>
+				<option value="export_opensmce">OpenSMCE Map</option>
+				</select>
+				<button id="ew-save">Save</button>
+				
+				<button id="ew-close">Close</button>
+				
+				<p><b>Zuma Deluxe Map restrictions</b>:</p>
+				<ul>
+				<li>Only first curve will be saved</li>
+				<li>Teleport nodes are not supported</li>
+				<li>Map metadata is not saved with the map, define them in levels.xml</li>
+				</ul>
+				
+				<p><b>OpenSMCE Map restrictions</b>:</p>
+				<ul>
+				<li>Map name will need to be entered in config.json after saving</li>
+				<li>tunnels.json will need to be defined if your map has tunnels</li>
+				<li>Shooter location will have to be manually defined</li>
+				<li>Map metadata is not saved with the map, define them in the level .json</li>
+				</ul>
+				
+			</div>
+		</div>
+		<a id="dlr" style="display:none;">dl</a>
+	</div>
+
 	<div id="upload" class="overlay" style="display:none">
 		<div class="box">
 			<div class="title">Load level files</div>
@@ -341,9 +375,10 @@
 			});
 
 			// 2 lazy to implement, shamelessly copy-pasted from StackOverflow :^)
-			const getCurvePoints = (pts, segments) => {
+			const getCurvePoints = (pts, segments, asPoints) => {
 				let tension = 0.5;
 				let numOfSegments = segments || 32;
+				let exportAsPoints = asPoints || false;
 				let _pts = [], res = [],    // clone array
 					x, y,           // our x,y coords
 					t1x, t2x, t1y, t2y, // tension vectors
@@ -382,8 +417,15 @@
 						x = c1 * _pts[i] + c2 * _pts[i + 2] + c3 * t1x + c4 * t2x;
 						y = c1 * _pts[i + 1] + c2 * _pts[i + 3] + c3 * t1y + c4 * t2y;
 
-						res.push(x);
-						res.push(y);
+						if (exportAsPoints == true) 
+						{
+							res.push({x: x, y: y, z: pts[i / 2 - 1].z, t: pts[i / 2 - 1].t });
+						}
+						else
+						{
+							res.push(x);
+							res.push(y);
+						}
 					}
 				}
 
@@ -511,6 +553,7 @@
 			const mainEl = $("#main");
 			const dlrEl = $("#dlr");
 			/** @type {HTMLDivElement} */
+			const exportOvl = $("#export");
 			const settingsOvl = $("#settings");
 			/** @type {HTMLDivElement} */
 			const uploadOvl = $("#upload");
@@ -548,14 +591,14 @@
 				screenOptions.autosave = true;
 			}
 			
-			$("#btn-save").disabled = true;
+			$("#btn-export").disabled = true;
 			
 			// load points if present
 			let loadedPoints = getStorage("map-data");
 			if (loadedPoints && screenOptions.autosave) {
 				state.points = loadedPoints;
 				state.selectedPoint = -1;
-				$("#btn-save").disabled = false;
+				$("#btn-export").disabled = false;
 			}
 
 			$("#sw-curve-precision").value = screenOptions.curve_precision || 32;
@@ -574,6 +617,7 @@
 			let mousePosPrev = [0, 0];
 			let mouseDelta = [0, 0];
 			let camDragging = false;
+			let saveAsType = "export_zuma";
 
 			let xOff = ((mainEl.width - screenOptions.width) / 2) | 0;
 			let yOff = ((mainEl.height - screenOptions.height) / 2) | 0;
@@ -608,10 +652,11 @@
 				redoBuffer = [];
 				$("#btn-undo").disabled = true;
 				$("#btn-redo").disabled = true;
-				$("#btn-save").disabled = false;
+				$("#btn-export").disabled = false;
 			};
 
-			$("#btn-save").onclick = () => {
+			$("#ew-save").onclick = () => {
+				console.log(saveAsType);
 				setErr(null);
 				state.selectedPoint = -1;
 
@@ -620,45 +665,94 @@
 				const deltas = getDeltas(state.points);
 				console.log("delta length new:", deltas.length);
 
-				let buf = new ArrayBuffer(48 + (state.points.length * 10) + deltas.length * 16);
-				let dw = new DataView(buf);
-
-				dw.setUint32(0, 0x43555256, false);
-				dw.setUint32(4, 2, true);
-				dw.setUint32(8, 1, true);
-				dw.setUint32(12, 4 + (state.points.length * 10), true);
-				dw.setUint32(16, state.points.length, true);
-
-				for (let i = 0; i < state.points.length; i++) {
-					const pt = state.points[i];
-					dw.setInt32(20 + i * 10, pt.x, true);
-					dw.setInt32(24 + i * 10, pt.y, true);
-					dw.setUint8(28 + i * 10, pt.t == 1 ? 1 : 0);
-					dw.setUint8(29 + i * 10, pt.z > 0 ? pt.z : 0);
-				}
-
-				//console.log(pts[0]);
-				const off = 20 + (state.points.length * 10);
-				dw.setUint32(off, deltas.length - 2, true);
-				dw.setFloat32(off + 4, state.points[0].x - 0.000543, true);
-				dw.setFloat32(off + 8, state.points[0].y - 0.000345, true);
-				for (let i = 1; i < deltas.length; i++) {
-					dw.setInt8(off + 10 + (i * 4), clamp(Math.round(deltas[i].x), -127, 127));
-					dw.setInt8(off + 11 + (i * 4), clamp(Math.round(deltas[i].y), -127, 127));
-					dw.setUint8(off + 12 + (i * 4), deltas[i].t == 1 ? 1 : 0);
-					dw.setUint8(off + 13 + (i * 4), deltas[i].z > 0 ? deltas[i].z : 0);
-				}
-
-				state.deltas = deltas;
-
-				const download = true;
-				if (download) {
-					let blob = new Blob([buf], { type: "octet/stream" });
+				if (saveAsType === "export_opensmce") {
+					// opensmce download
+					let opensmce_map = {};
+					opensmce_map.name = " ";
+					opensmce_map.paths = [];
+					let points_render = getCurvePoints(state.points, screenOptions.curve_precision, true);
+					let path = [];
+					points_render.forEach((e) => {
+						let node = {};
+						node.x = Math.round((e.x + Number.EPSILON) * 100) / 100;
+						node.y = Math.round((e.y + Number.EPSILON) * 100) / 100;
+						node.z = e.z || 0;
+						if (e.t == 1) {node.hidden = true;} else {node.hidden = false;}
+						path.push(node);
+					});
+					opensmce_map.paths.push(path);
+					// build background
+					opensmce_map.sprites =
+					[{
+						"x": 0,
+						"y": 0,
+						"path": "background.json",
+						"internal": true,
+						"background": true
+					}];
+					// build shooter location
+					opensmce_map.shooter =
+					{
+						"name": "default",
+						"movement": {
+							"type": "circular",
+							"x": 380,
+							"y": 248
+						}
+					};
+					
+					let export_map = JSON.stringify(opensmce_map);
+					let blob = new Blob([export_map], { type: "octet/stream" });
 					let url = window.URL.createObjectURL(blob);
 					dlrEl.href = url;
-					dlrEl.download = "level.dat";
+					dlrEl.download = "config.json";
 					dlrEl.click();
 					window.URL.revokeObjectURL(url);
+					
+				}
+
+				if (saveAsType === "export_zuma") {
+					// zuma classic download
+					let buf = new ArrayBuffer(24 + (state.points.length * 10) + (deltas.length * 4) + 6);
+					let dw = new DataView(buf);
+
+					dw.setUint32(0, 0x43555256, false);
+					dw.setUint32(4, 2, true);
+					dw.setUint32(8, 1, true);
+					dw.setUint32(12, 4 + (state.points.length * 10), true);
+					dw.setUint32(16, state.points.length, true);
+
+					for (let i = 0; i < state.points.length; i++) {
+						const pt = state.points[i];
+						dw.setInt32(20 + i * 10, pt.x, true);
+						dw.setInt32(24 + i * 10, pt.y, true);
+						dw.setUint8(28 + i * 10, pt.t == 1 ? 1 : 0);
+						dw.setUint8(29 + i * 10, pt.z > 0 ? pt.z : 0);
+					}
+
+					//console.log(pts[0]);
+					const off = 20 + (state.points.length * 10);
+					dw.setUint32(off, deltas.length - 2, true);
+					dw.setFloat32(off + 4, state.points[0].x - 0.000543, true);
+					dw.setFloat32(off + 8, state.points[0].y - 0.000345, true);
+					for (let i = 1; i < deltas.length; i++) {
+						dw.setInt8(off + 10 + (i * 4), clamp(Math.round(deltas[i].x), -127, 127));
+						dw.setInt8(off + 11 + (i * 4), clamp(Math.round(deltas[i].y), -127, 127));
+						dw.setUint8(off + 12 + (i * 4), deltas[i].t == 1 ? 1 : 0);
+						dw.setUint8(off + 13 + (i * 4), deltas[i].z > 0 ? deltas[i].z : 0);
+					}
+
+					state.deltas = deltas;
+
+					const download = true;
+					if (download) {
+						let blob = new Blob([buf], { type: "octet/stream" });
+						let url = window.URL.createObjectURL(blob);
+						dlrEl.href = url;
+						dlrEl.download = "level.dat";
+						dlrEl.click();
+						window.URL.revokeObjectURL(url);
+					}
 				}
 			};
 
@@ -668,6 +762,10 @@
 
 			$("#uw-close").onclick = () => {
 				uploadOvl.style.display = "none";
+			};
+			
+			$("#ew-close").onclick = () => {
+				exportOvl.style.display = "none";
 			};
 
 			$("#btn-undo").onclick = () => {
@@ -699,6 +797,15 @@
 			$("#btn-settings").onclick = () => {
 				settingsOvl.style.display = "";
 			};
+			
+			$("#btn-export").onclick = () => {
+				exportOvl.style.display = "";
+			};
+			$("#export_types").onchange = (e) => {
+				console.log(e.target.value);
+				saveAsType = e.target.value;
+			};
+			
 
 			$("#sw-width").onchange = (e) => {
 				screenOptions.width = Number(e.target.value);
@@ -817,14 +924,14 @@
 						// console.log(delta.x / 100, delta.y / 100, dist);
 						state.deltas.push(delta);
 					}
-					$("#btn-save").disabled = false;
+					$("#btn-export").disabled = false;
 					
 				} catch (error) {
 					setErr("Map is corrupt!");
 					state.points = [];
 					state.deltas = [];
 					state.selectedPoint = -1;
-					$("#btn-save").disabled = true;
+					$("#btn-export").disabled = true;
 				}
 
 			};
@@ -921,9 +1028,10 @@
 				if (e.key === "Escape") {
 					$("#uw-close").click();
 					$("#sw-close").click();
+					$("#ew-close").click();
 				}
 				
-				if (settingsOvl.style.display != "none" || uploadOvl.style.display != "none" ) return;
+				if (settingsOvl.style.display != "none" || uploadOvl.style.display != "none" || exportOvl.style.display != "none") return;
 				if (disableRepeat) return;
 				if (e.key === "s" && state.selectedPoint > 0) {
 					const i = state.selectedPoint;
