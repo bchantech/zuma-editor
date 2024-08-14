@@ -238,6 +238,19 @@
 			<img alt="" title="Settings" width="24px" height="24px"
 				src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAACoklEQVR4nO2Yz2sTQRTHp+pVhIoH6c14EBQ9CB704sl/QApKceelAS8KgiDV7Hudg6mk7yWVogdPguCp4E9E8KKIUigSBW896EGMkV7VQw9pZJJUzGaTbkrYzMJ+YG/L8vnufGd2dpRKSUlJGZScKR8E4qtA8gqQVzXKHyD+DcRfAWVeuYqHxcOAsgTEG0DS6LpQPl24fmuvco/GGKDMaJR6qDg5LG+M2QXET3qKkzQ0SiVnyuPKRYDkbmLlvXzxRM++u1ybTQD54TDefM6Ux4GYVdwA8fce8vVB5DVKRSN/UXEDKOu9RsDLlyeiyrdC8y8VN5r4Z88K+XwpqvzIAgDK+z5zoJq9MbcvinxrwvNq7AE08ly/JRSI3wZDhMq3AryMPwDxqf4BpDkSQHLZzome8s0ApSuxB7g4U9yzVQCIdPGG53MmZv3GmEa+M5QAKI9jlwfkxWHIa5T6tJEjiZSH1vLpJ1ee+JF9ZuLktf1vQLltt+LOyduJPX1tfjf4pZMa+aYmfgfEP+y2QxN/A5IHmkrHYxIfUJ7kXoyViEIqHw+ez2c08n1N/LnZU5RlIH4T7SPEiyOrzVR+YT+gvN7+F3SE8l6+PNFeFZInr1rnOMsJlVd2G3y2W0pqnuGj2pfTQFIAkpXQE4dRy1u6DqJQatqUDqkArRAd6/yHkctb2j8Z/8SyWD6mQmiPREdQ5QIQOE2wtQm7r12n/wOsKxcAlFqg24Ww++zIBDZhVeUCgPwiEGAleI+dE8GgGvm5cgE9W5rqDNBcbeyELdja2NUoZJQa2dnSeeUCk5NLO+3B64B7+IoxZodyBc/njCZZi7hNXsuahQPKNTyfM0D8cas376T8JrYWtttA/Kz5fbB/TihVjfJUo5xzqjYpKSkqcfwFxmK8WX1m+GYAAAAASUVORK5CYII=">
 		</button>
+		Guide:
+		<button id="btn-reflect_off">
+				Off
+		</button>
+		<button id="btn-reflect_x">
+				◧
+		</button>
+		<button id="btn-reflect_y">
+				⬒
+		</button>
+		<button id="btn-reflect_xy">
+				◩
+		</button>
 	</div>
 	<div class="toolbar-sub">
 		<b>Zuma Deluxe Level Editor</b>
@@ -612,6 +625,9 @@
 			$("#btn-redo").disabled = true;
 			let undoBuffer = [];
 			let redoBuffer = [];
+			
+			let reflectX = false;
+			let reflectY = false;
 
 			let mousePos = [0, 0];
 			let mousePosPrev = [0, 0];
@@ -800,6 +816,23 @@
 			
 			$("#btn-export").onclick = () => {
 				exportOvl.style.display = "";
+			};
+			// real time reflect
+			$("#btn-reflect_x").onclick = () => {
+				reflectX = true;
+				reflectY = false;
+			};
+			$("#btn-reflect_y").onclick = () => {
+				reflectX = false;
+				reflectY = true;
+			};
+			$("#btn-reflect_xy").onclick = () => {
+				reflectX = true;
+				reflectY = true;
+			};
+			$("#btn-reflect_off").onclick = () => {
+				reflectX = false;
+				reflectY = false;
 			};
 			$("#export_types").onchange = (e) => {
 				console.log(e.target.value);
@@ -1182,6 +1215,24 @@
 							ctx.lineTo(pts[i], pts[i + 1]);
 						}
 						ctx.stroke();
+						// reflected curve
+						if (reflectX || reflectY) {
+							const pts_reflect = JSON.parse(JSON.stringify(state.points));
+							if (reflectX) {
+							pts_reflect.forEach((e) => e.x = screenOptions.width - e.x -1); }
+							if (reflectY) {
+							pts_reflect.forEach((e) => e.y = screenOptions.height - e.y -1); }
+							const pts2 = getCurvePoints(pts_reflect, screenOptions.curve_precision);
+							ctx.lineWidth = (screenOptions.line_width || 3);
+							ctx.globalAlpha = 0.7;
+							ctx.strokeStyle = "#004400";
+							ctx.beginPath();
+							ctx.moveTo(pts2[0], pts2[1]);
+							for (let i = 2; i < pts2.length - 1; i += 2) {
+								ctx.lineTo(pts2[i], pts2[i + 1]);
+							}
+							ctx.stroke();
+						}
 					}
 					ctx.lineWidth = 1;
 
