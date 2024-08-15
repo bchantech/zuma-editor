@@ -300,7 +300,7 @@
 				<p><b>Zuma Deluxe Map restrictions</b>:</p>
 				<ul>
 				<li>Only first curve will be saved</li>
-				<li>Teleport nodes are not supported</li>
+				<li>Warp nodes are not supported</li>
 				<li>Map metadata is not saved with the map, define them in levels.xml</li>
 				</ul>
 				
@@ -321,7 +321,8 @@
 		<div class="box">
 			<div class="title">Load level files</div>
 			<div class="content">
-				Load shape file: <input id="shape" type="file" accept=".dat" /><br />
+				Load shape file: <input id="shape" type="file" accept=".dat, .obj, .json" /><br /> 
+				<span style="font-size: 80%">*Supported files: Zuma .dat paths, Luxor / NODE .obj paths, OpenSMCE config.json</span><br /><br />
 				Load background: <input id="bg" type="file" accept="image/*" /><br />
 
 				<button id="uw-close">Close</button>
@@ -380,6 +381,12 @@
 				fr.onload = () => resolve(fr.result);
 				fr.readAsArrayBuffer(file);
 			});
+			
+			const readFileText = (file) => new Promise((resolve, reject) => {
+				let fr = new FileReader();
+				fr.onload = () => resolve(fr.result);
+				fr.readAsText(file);
+			});
 
 			const readFileURL = (file) => new Promise((resolve, reject) => {
 				let fr = new FileReader();
@@ -432,7 +439,7 @@
 
 						if (exportAsPoints == true) 
 						{
-							res.push({x: x, y: y, z: pts[i / 2 - 1].z, t: pts[i / 2 - 1].t });
+							res.push({x: x, y: y, z: pts[i / 2 - 1].z, t: pts[i / 2 - 1].t, w: pts[i / 2 - 1].w});
 						}
 						else
 						{
@@ -664,6 +671,7 @@
 				state.points = [{ x: -20, y: 50, z: 0, t: 0 }, { x: 100, y: 100, z: 0, t: 0 }, { x: 140, y: 200, z: 0, t: 0 }];
 				state.deltas = [];
 				state.selectedPoint = -1;
+				state.metadata = [];
 				undoBuffer = [];
 				redoBuffer = [];
 				$("#btn-undo").disabled = true;
@@ -891,14 +899,107 @@
 
 			const shapeChange = async (e) => {
 				console.log("Got shape file change", e);
-
+				// return if load file was cancelled
+				if (shapeEl.files.length == 0) return;
 				// reset editor state
 				setErr(null);
 				state.points = [];
 				state.deltas = [];
+				state.metadata = [];
 				state.selectedPoint = -1;
+				
+				// Detect map type
+				if (shapeEl.files[0].name.slice(-4).toLowerCase() == ".obj")
+				{
+					console.log("autodetect: luxor obj file");
+					readLuxorMap(shapeEl.files[0])
+				}
+				
+				if (shapeEl.files[0].name.slice(-4).toLowerCase() == ".dat")
+				{
+					console.log("autodetect: zuma file");
+					readZumaMap(shapeEl.files[0])
+				}
+				
+				if (shapeEl.files[0].name.slice(-5).toLowerCase() == ".json")
+				{
+					console.log("autodetect: opensmce json file");
+					readOpenSmceMap(shapeEl.files[0])
+				}
+				
 
-				const buf = await readFile(shapeEl.files[0]);
+			};
+			
+			const readLuxorMap = async(file) =>
+			{
+				const buf = await readFileText(file);
+				const buf_lines = buf.split(/\r?\n/);
+				let nodes = buf_lines.filter((e) => e.slice(0,2) == "v ");
+					let sequence = buf_lines.filter((e) => e.slice(0,2) == "f ");
+					let imported_points = [];
+					sequence = sequence[0].slice(2);
+					// detect luxor evolved maps
+					if (sequence.indexOf("/") != -1)
+					{
+						sequence = sequence.replaceAll("//1", "");
+					}
+					sequence.split(" ").forEach(function (v) {
+						// 0 = x, 1 = y, 2 = warp = 0.03, 0.01
+						let vertex_tmp = nodes[v-1].slice(2).split(" ");
+						vertex_tmp[2] = Number(vertex_tmp[2]);
+						
+						let point_add = {x: Number(vertex_tmp[0]), y: Number(vertex_tmp[1]) * -1};
+						if (vertex_tmp[2] == 0.01)
+						// hidden node
+						{
+							point_add.t = 1;
+							point_add.w = 0;
+						}
+						// warp node
+						else if (vertex_tmp[2] == 0.03)
+						{
+							point_add.t = 0;
+							point_add.w = 1;
+						}
+						else
+						{
+							point_add.t = 0;
+							point_add.w = 0;
+						}
+						
+						point_add.z = 0;
+						state.points.unshift(point_add);
+						
+					});
+			};
+			
+			
+			const readOpenSmceMap = async (file) =>
+			{
+				const buf = await readFileText(file);
+				let data = JSON.parse(buf);
+				let pathData = [];
+				if (data.config) 
+				{
+					console.log("standalone map detected"); 
+					pathData = data.config.paths[0];
+				}
+				else
+				{
+					pathData = data.paths[0];
+				}
+				pathData.forEach(function (v) {
+					let point_add = {x: v.x, y: v.y}
+					point_add.t = v.hidden == true ? 1 : 0;
+					point_add.w = v.warp == true ? 1 : 0;
+					point_add.z = v.z || 0;
+					state.points.push(point_add);
+				});
+			};
+			
+			const readZumaMap = async (file) =>
+			{
+				const buf = await readFile(file);
 				const dv = new DataView(buf);
 				window.dv = dv;
 
@@ -913,6 +1014,31 @@
 				let curveOffset = 0x10;
 				if (curveVersion >= 12) {	
 					curveOffset = 0xc4;
+					state.metadata.Linear           = dv.getInt8(0x08, true);
+					state.metadata.StartDistance    = dv.getInt8(0x09, true);
+					state.metadata.NumBalls         = dv.getUint32(0x0d, true);
+					state.metadata.BallRepeat       = dv.getUint32(0x11, true);
+					state.metadata.MaxSingle        = dv.getUint32(0x15, true);
+					state.metadata.NumColors        = dv.getUint32(0x19, true);
+					state.metadata.Speed            = dv.getFloat32(0x1d, true);
+					state.metadata.SlowDistance     = dv.getUint32(0x21, true);
+					state.metadata.AccelerationRate = dv.getFloat32(0x25, true);
+					state.metadata.MaxSpeed         = dv.getFloat32(0x29, true);
+					state.metadata.ScoreTarget      = dv.getUint32(0x2d, true);
+					state.metadata.SkullRotation    = dv.getInt32(0x31, true);
+					state.metadata.ZumaBack         = dv.getUint32(0x35, true);
+					state.metadata.ZumaSlow         = dv.getUint32(0x39, true);
+					state.metadata.SlowFactor       = dv.getFloat32(0x3d, true);
+					state.metadata.MaxClumpSize     = dv.getUint32(0x41, true);
+					state.metadata.PowerUpChance    = dv.getUint32(0xb1, true);
+					state.metadata.DrawCurve        = dv.getInt8(0xb5, true);
+					state.metadata.DrawTunnels      = dv.getInt8(0xb6, true);
+					state.metadata.DestroyAll       = dv.getInt8(0xb7, true);
+					state.metadata.DrawPit          = dv.getInt8(0xb8, true);
+					state.metadata.DieAtEnd         = dv.getInt8(0xb9, true);
+					state.metadata.smallVersion     = dv.getInt8(0xba, true);
+					state.metadata.HasTunnels       = dv.getInt8(0xbb, true);
+					console.log(state.metadata);
 				}
 
 				const pointCount = dv.getUint32(curveOffset, true);
