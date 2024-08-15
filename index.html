@@ -251,6 +251,9 @@
 		<button id="btn-reflect_xy">
 				&#x25E9;
 		</button>
+		<button id="btn-toggle-background" title="Toggle Background">
+				&#x1F333;
+		</button>
 	</div>
 	<div class="toolbar-sub">
 		<b>Zuma Deluxe Level Editor</b>
@@ -841,6 +844,9 @@
 			$("#btn-reflect_off").onclick = () => {
 				reflectX = false;
 				reflectY = false;
+			};
+			$("#btn-toggle-background").onclick = () => {
+				disableBackground = !disableBackground;
 			};
 			$("#export_types").onchange = (e) => {
 				console.log(e.target.value);
