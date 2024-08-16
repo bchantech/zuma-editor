@@ -1251,8 +1251,12 @@
 					scale = 1.0;
 					scaleTarget = 1.0;
 				} else if (e.key === "a" && state.points.length > 0) {
-					const pt_x = clampF32((mousePos[0] - xOff)  / scale);
-					const pt_y = clampF32((mousePos[1] - yOff)  / scale);
+					let pt_x = clampF32((mousePos[0] - xOff)  / scale);
+					let pt_y = clampF32((mousePos[1] - yOff)  / scale);
+					if (screenOptions.pixelLock) {
+						pt_x = Math.floor(pt_x);
+						pt_y = Math.floor(pt_y);
+					}
 					
 					const pt = state.points[state.points.length-1];
 					const point = { x: pt_x, y: pt_y, z: pt.z, t: pt.t, w: pt.w };
