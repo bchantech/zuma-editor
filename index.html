@@ -276,6 +276,7 @@
 				<li><kbd>D</kbd> Delete point</li>
 				<li><kbd>O</kbd> / <kbd>P</kbd> Lower/Raise Z-index</li>
 				<li><kbd>T</kbd> Toggle tunnel</li>
+				<li><kbd>W</kbd> Toggle warp</li>
 				<li><kbd>R</kbd> Reset and center the view</li>
 				<li><kbd>B</kbd> Toggle background</li>
 				<li><kbd>Z</kbd> Undo</li>
@@ -671,7 +672,7 @@
 
 			$("#btn-new").onclick = () => {
 				setErr(null);
-				state.points = [{ x: -20, y: 50, z: 0, t: 0 }, { x: 100, y: 100, z: 0, t: 0 }, { x: 140, y: 200, z: 0, t: 0 }];
+				state.points = [{ x: -20, y: 50, z: 0, t: 0, w: 0 }, { x: 100, y: 100, z: 0, t: 0, w: 0 }, { x: 140, y: 200, z: 0, t: 0, w: 0 }];
 				state.deltas = [];
 				state.selectedPoint = -1;
 				state.metadata = [];
@@ -1063,6 +1064,7 @@
 							y: dv.getInt32(idx + 4, true),
 							z: dv.getUint8(idx + 9, true),
 							t: dv.getUint8(idx + 8, true),
+							w: 0,
 						};
 						// unroll list of point flags
 						if (point.t >= 4) {point.t -= 4; point.absolute = 1;}
@@ -1084,6 +1086,7 @@
 							y: dv.getInt8(off + 11 + (i * 4)),
 							z: dv.getUint8(off + 13 + (i * 4)),
 							t: dv.getUint8(off + 12 + (i * 4)),
+							w: 0,
 						};
 						const dist = Math.sqrt(((delta.x * delta.x) / 10000) + ((delta.y * delta.y) / 10000));
 						// console.log(delta.x / 100, delta.y / 100, dist);
@@ -1225,6 +1228,11 @@
 					if (pt.t == 0) {pt.t = 1;}
 					else {pt.t = 0;}
 					disableRepeat = true;
+				} else if (e.key === "w" && state.selectedPoint !== -1) {
+					const pt = state.points[state.selectedPoint];
+					if (!pt.w) {pt.w = 1;}
+					else {pt.w = 0;}
+					disableRepeat = true;
 				} else if (e.key === "o" && state.selectedPoint !== -1) {
 					const pt = state.points[state.selectedPoint];
 					if (pt.z > 0) {
@@ -1247,7 +1255,7 @@
 					const pt_y = clampF32((mousePos[1] - yOff)  / scale);
 					
 					const pt = state.points[state.points.length-1];
-					const point = { x: pt_x, y: pt_y, z: pt.z, t: pt.t };
+					const point = { x: pt_x, y: pt_y, z: pt.z, t: pt.t, w: pt.w };
 					if (pt.x != pt_x && pt.y != pt_y)
 					{
 						saveUndoBuffer(state.points);
@@ -1337,14 +1345,20 @@
 				let prev = null;
 				if (state.points.length !== 0) {
 					if (state.points.length >= 2) {
-						const pts = getCurvePoints(state.points, screenOptions.curve_precision);
+						let render_tunnel = false;
+						const pts = getCurvePoints(state.points, screenOptions.curve_precision, true);
 						ctx.lineWidth = (screenOptions.line_width || 3);
 						ctx.globalAlpha = 0.7;
 						ctx.strokeStyle = "#444444";
 						ctx.beginPath();
-						ctx.moveTo(pts[0], pts[1]);
-						for (let i = 2; i < pts.length - 1; i += 2) {
-							ctx.lineTo(pts[i], pts[i + 1]);
+						ctx.moveTo(pts[0].x, pts[0].y);
+						for (let i = 1; i < pts.length; i++) {
+							ctx.lineTo(pts[i].x,pts[i].y);
+							if (i+1 < pts.length && pts[i+1].w > 0) 
+							{
+								ctx.stroke();
+								ctx.beginPath();
+							}
 						}
 						ctx.stroke();
 						// reflected curve
@@ -1354,14 +1368,19 @@
 							pts_reflect.forEach((e) => e.x = screenOptions.width - e.x -1); }
 							if (reflectY) {
 							pts_reflect.forEach((e) => e.y = screenOptions.height - e.y -1); }
-							const pts2 = getCurvePoints(pts_reflect, screenOptions.curve_precision);
+							const pts2 = getCurvePoints(pts_reflect, screenOptions.curve_precision, true);
 							ctx.lineWidth = (screenOptions.line_width || 3);
 							ctx.globalAlpha = 0.7;
 							ctx.strokeStyle = "#004400";
 							ctx.beginPath();
-							ctx.moveTo(pts2[0], pts2[1]);
-							for (let i = 2; i < pts2.length - 1; i += 2) {
-								ctx.lineTo(pts2[i], pts2[i + 1]);
+							ctx.moveTo(pts2[0].x, pts2[0].y);
+							for (let i = 1; i < pts.length; i++) {
+								ctx.lineTo(pts2[i].x,pts2[i].y);
+								if (i+1 < pts2.length && pts2[i+1].w > 0) 
+								{
+									ctx.stroke();
+									ctx.beginPath();
+								}
 							}
 							ctx.stroke();
 						}
@@ -1431,7 +1450,9 @@
 				statusBox.innerText += `points: ${state.points.length}\n`;
 				if (state.selectedPoint !== -1) {
 					const pt = state.points[state.selectedPoint];
-					statusBox.innerText += `selected point id: ${state.selectedPoint} x: ${pt.x} y: ${pt.y}, z: ${pt.z}, Tunnel: ${pt.t}\n`;
+					statusBox.innerText += `selected point id: ${state.selectedPoint} x: ${pt.x} y: ${pt.y}, z: ${pt.z}, Tunnel: ${pt.t}, warp: ${pt.w}, \n`;
+					const pointDist_pct = Number(curvePointDistance/curveDistance).toLocaleString(undefined,{style: 'percent', minimumFractionDigits:2});
+					statusBox.innerText += `d from start: ${Math.round((curvePointDistance + Number.EPSILON) * 1000) / 1000} (${pointDist_pct}) `;
 				}
 
 				if (state.error) {
