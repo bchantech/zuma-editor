@@ -2,7 +2,7 @@
 <html>
 
 <head>
-	<title>Zuma Deluxe Level Editor</title>
+	<title>Zuma Level Editor v0.5.11</title>
 	<style>
 		body {
 			background: black;
@@ -114,7 +114,7 @@
 		}
 
 		.keybindbox .content.show {
-			max-height: 235px;
+			max-height: 255px;
 		}
 
 		.toolbar {
@@ -254,11 +254,15 @@
 		<button id="btn-toggle-background" title="Toggle Background">
 				&#x1F333;
 		</button>
+		<button id="btn-toggle-spline">
+			<img alt="" title="Toggle Splines" width="24px" height="24px"
+				src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwBAMAAAClLOS0AAAABGdBTUEAALGPC/xhBQAAABhQTFRFAAAAAAAAAAAAAAAAAAAAAAAAkZGR+vr6Yv+1ngAAAAZ0Uk5TJoy8VPsAABzzEQAAAPdJREFUOMvF1EEOgjAQBVAT4QIqJ7BcwLR7igNuhcINTLyAca4vZSi2cWbhwthVyWunfwphMwpj81NwqjYsHAAsBw7uTzAM9C3irWRguCA+mm9ALCUeLsYdO0gb3OYBbHIl07oQq0pA11DSLGtiuILJ7HJ4EUNvvc1TZWLIpsK6ob3J+/D7e/sOtQLkfq1PPJxjcHPWg89FBQP087J5sSpioOxuqkX1VtDUnCqXBCtQ9nHqUVcJQHgX+6XLBVy4QA02+eC68HjdmQSGSvhEKS0DdNOfcIIjCx0AFBzoFm9nDtQdnzUHgIjwFYilxMPFuGKDf/hl0HgB2Bpv8poFeyAAAAAASUVORK5CYII=">
+		</button>
 	</div>
 	<div class="toolbar-sub">
-		<b>Zuma Deluxe Level Editor</b>
-		<span>&nbsp;(v0.5.0 - Jul 19 2024) - created by <a href="https://github.com/alula"
-				target="_blank">@alula</a></span>
+		<b>Zuma Level Editor</b>
+		<span>&nbsp;(v0.5.11 - Apr 28 2025) - <a href="https://github.com/bchantech/zuma-editor"
+				target="_blank">Github</a> - <a href="changelog.txt">Changelog</a></span>
 	</div>
 	<div id="statusbox">
 
@@ -348,8 +352,11 @@
 					<b>Curve Line Size (px)</b><br />
 					<input id="sw-line-width" type="number" min="1" max="64" value="3" /><br /><br />
 					
-					<b>Curve Max Precision (segments)</b><br />
+					<b>Curve Spline Precision (segments)</b><br />
 					<input id="sw-curve-precision" type="number" min="1" max="1000" value="32" /><br /><br />
+
+					<input id="sw-center-background" type="checkbox" />
+					<label for="sw-center-background"><b>Vertically center background <sup title="Zuma's Revenge supports 4:3 and 16:10; the background is centered in the lower resolution.">&#9432;</sup></b><br /><br />
 
 					<input id="sw-pixellock" type="checkbox" />
 					<label for="sw-pixellock"><b>Lock points to pixel grid <sup title="If disabled, the level points won't be clamped to pixel grid">&#9432;</sup></b></label><br /><br />
@@ -402,6 +409,7 @@
 			const getCurvePoints = (pts, segments, asPoints) => {
 				let tension = 0.5;
 				let numOfSegments = segments || 32;
+				if (disableSpline) numOfSegments = 1;
 				let exportAsPoints = asPoints || false;
 				let _pts = [], res = [],    // clone array
 					x, y,           // our x,y coords
@@ -443,7 +451,7 @@
 
 						if (exportAsPoints == true) 
 						{
-							res.push({x: x, y: y, z: pts[i / 2 - 1].z, t: pts[i / 2 - 1].t, w: pts[i / 2 - 1].w});
+							res.push({x: x, y: y, z: pts[i / 2 - 1].z, t: pts[i / 2 - 1].t, w: pts[i / 2 - 1].w, i_pt: i});
 						}
 						else
 						{
@@ -457,8 +465,10 @@
 			};
 
 			const getDeltas = (pts) => {
+				if (pts.length == 0) return [];
 				let tension = 0.5;
 				let numOfSegments = screenOptions.curve_precision || 32;
+				if (disableSpline) numOfSegments = 1;
 				let _pts = [], linePoints = [],    // clone array
 					x, y,           // our x,y coords
 					t1x, t2x, t1y, t2y, // tension vectors
@@ -526,13 +536,13 @@
 					const tanX = delX / dist;
 					const tanY = delY / dist;
 					
-					for (let j = 0; j < dist; j += 4) {
+					for (let j = 90; j < dist; j += 1) {
 						const x = x1 + Math.floor(tanX * j);
 						const y = y1 + Math.floor(tanY * j);
 
 						const distL = Math.sqrt((x - lx) * (x - lx) + (y - ly) * (y - ly));
 						if (distL >= 99.8) {
-							console.log(distL, x, y);
+							//console.log(distL, x, y);
 							const dx = Math.floor(x - lx);
 							const dy = Math.floor(y - ly);
 							lx = x;
@@ -549,6 +559,44 @@
 
 				return deltas;
 			};
+
+			// inputs a series of points with x,y
+			const getCurveDistance = (curvePoints, selectedPoint) => {
+				if (curvePoints.length < 1 || selectedPoint >= curvePoints.length ) return 0;
+				let prevPoint = curvePoints[0];
+				let dist = 0;
+				let dist_selectedPoint = -1;
+				let num_points = 0;
+				
+				
+				// use getCurvePoints to get extra precision
+				let selectedPoint_coords = curvePoints[selectedPoint];
+				let curvePoints_precise = [];
+				curvePoints_precise = getCurvePoints(curvePoints, screenOptions.curve_precision, true);
+				
+				curvePoints = curvePoints_precise;
+				
+				console.log(curvePoints);
+				curvePoints.forEach((e) => {
+				if (selectedPoint == num_points) {dist_selectedPoint = dist; /*console.log(dist_selectedPoint);*/}
+				dist += Math.hypot((e.x - prevPoint.x), (e.y - prevPoint.y)); 
+				if (selectedPoint_coords.x == e.x && selectedPoint_coords.y == e.y) dist_selectedPoint = dist;
+				num_points++;
+				prevPoint = e;
+				});
+				
+				// returns dist, and the (or -1 if none)
+				return [dist, dist_selectedPoint];
+			};
+
+			// refreshes the curve info into global variables.
+			const refreshCurveInfo = () => {
+				let curveData = getCurveDistance(state.points, state.selectedPoint);
+				
+				curveDistance = curveData[0];
+				curvePointDistance = curveData[1];
+			};
+			
 
 			const saveUndoBuffer = (data) => {
 				let data2 = JSON.parse(JSON.stringify(state.points));
@@ -615,6 +663,13 @@
 				screenOptions.autosave = true;
 			}
 			
+			if ((screenOptions.version) < 3) {
+				screenOptions.version = 3;
+				screenOptions.centerBackground = true;
+				screenOptions.center_offset_x = 0;
+				screenOptions.center_offset_y = 0;
+			}
+			
 			$("#btn-export").disabled = true;
 			
 			// load points if present
@@ -631,6 +686,7 @@
 			$("#sw-height").value = screenOptions.height || 480;
 			$("#sw-pixellock").checked = screenOptions.pixelLock || false;
 			$("#sw-autosave").checked = screenOptions.autosave || true;
+			$("#sw-center-background").checked = screenOptions.centerBackground || true;
 			
 			$("#btn-undo").disabled = true;
 			$("#btn-redo").disabled = true;
@@ -639,6 +695,9 @@
 			
 			let reflectX = false;
 			let reflectY = false;
+			
+			let curveDistance = 0;
+			let curvePointDistance = 0;
 
 			let mousePos = [0, 0];
 			let mousePosPrev = [0, 0];
@@ -656,6 +715,7 @@
 			const headSize = 6;
 			let disableRepeat = false;
 			let disableBackground = false;
+			let disableSpline = false;
 
 			let cBoxHidden = getStorage("keybind-hide") || false;
 			if (cBoxHidden) {
@@ -678,6 +738,7 @@
 				state.metadata = [];
 				undoBuffer = [];
 				redoBuffer = [];
+				disableSpline = false;
 				$("#btn-undo").disabled = true;
 				$("#btn-redo").disabled = true;
 				$("#btn-export").disabled = false;
@@ -827,6 +888,7 @@
 			};
 			
 			$("#btn-export").onclick = () => {
+				if (state.points.length > 0)
 				exportOvl.style.display = "";
 			};
 			// real time reflect
@@ -848,6 +910,10 @@
 			};
 			$("#btn-toggle-background").onclick = () => {
 				disableBackground = !disableBackground;
+			};
+			$("#btn-toggle-spline").onclick = () => {
+				disableSpline = !disableSpline;
+				refreshCurveInfo();
 			};
 			$("#export_types").onchange = (e) => {
 				console.log(e.target.value);
@@ -873,6 +939,10 @@
 
 			$("#sw-pixellock").onchange = (e) => {
 				screenOptions.pixelLock = e.target.checked;
+			}
+			
+			$("#sw-center-background").onchange = (e) => {
+				screenOptions.centerBackground = e.target.checked;
 			}
 			
 			$("#sw-autosave").onchange = (e) => {
@@ -920,18 +990,21 @@
 				{
 					console.log("autodetect: luxor obj file");
 					readLuxorMap(shapeEl.files[0])
+					disableSpline = true;
 				}
 				
 				if (shapeEl.files[0].name.slice(-4).toLowerCase() == ".dat")
 				{
 					console.log("autodetect: zuma file");
 					readZumaMap(shapeEl.files[0])
+					disableSpline = false;
 				}
 				
 				if (shapeEl.files[0].name.slice(-5).toLowerCase() == ".json")
 				{
 					console.log("autodetect: opensmce json file");
 					readOpenSmceMap(shapeEl.files[0])
+					disableSpline = true;
 				}
 				
 
@@ -1019,8 +1092,13 @@
 				// ZR Map Support: Read the version number first.
 				const curveVersion = dv.getUint32(4, true);
 				let curveOffset = 0x10;
+				let smallCurveSize = dv.getUint32(0x0c, true);
 				if (curveVersion >= 12) {	
-					curveOffset = 0xc4;
+					let numOfPowerups 			    = dv.getUint32(0x45, true);
+					let powerupOffset = numOfPowerups * 8;
+					curveOffset = 0x5c + powerupOffset;
+					smallCurveSize = dv.getUint32(0x58 + powerupOffset, true);
+					
 					state.metadata.Linear           = dv.getInt8(0x08, true);
 					state.metadata.StartDistance    = dv.getInt8(0x09, true);
 					state.metadata.NumBalls         = dv.getUint32(0x0d, true);
@@ -1037,46 +1115,60 @@
 					state.metadata.ZumaSlow         = dv.getUint32(0x39, true);
 					state.metadata.SlowFactor       = dv.getFloat32(0x3d, true);
 					state.metadata.MaxClumpSize     = dv.getUint32(0x41, true);
-					state.metadata.PowerUpChance    = dv.getUint32(0xb1, true);
-					state.metadata.DrawCurve        = dv.getInt8(0xb5, true);
-					state.metadata.DrawTunnels      = dv.getInt8(0xb6, true);
-					state.metadata.DestroyAll       = dv.getInt8(0xb7, true);
-					state.metadata.DrawPit          = dv.getInt8(0xb8, true);
-					state.metadata.DieAtEnd         = dv.getInt8(0xb9, true);
-					state.metadata.smallVersion     = dv.getInt8(0xba, true);
-					state.metadata.HasTunnels       = dv.getInt8(0xbb, true);
+					state.metadata.PowerUpChance    = dv.getUint32(0x49 + powerupOffset, true);
+					state.metadata.DrawCurve        = dv.getInt8(0x4d + powerupOffset, true);
+					state.metadata.DrawTunnels      = dv.getInt8(0x4e + powerupOffset, true);
+					state.metadata.DestroyAll       = dv.getInt8(0x4f + powerupOffset, true);
+					state.metadata.DrawPit          = dv.getInt8(0x50 + powerupOffset, true);
+					state.metadata.DieAtEnd         = dv.getInt8(0x51 + powerupOffset, true);
+					state.metadata.smallVersion     = dv.getInt8(0x52 + powerupOffset, true);
+					state.metadata.HasTunnels       = dv.getInt8(0x53 + powerupOffset, true);
 					console.log(state.metadata);
 				}
 
 				const pointCount = dv.getUint32(curveOffset, true);
 				console.log(pointCount);
-
-				if (pointCount < 2) {
+				let skip_small_curve = false;
+				
+				if (pointCount == 0x64614D0D) {
+					setErr("GScience copyright detected, skipping small curve");
+					skip_small_curve = true;
+					//return;
+				}
+				
+				else if (smallCurveSize != (pointCount*10 + 4) ) {
+					setErr("Invalid small curve data, skipping");
+					skip_small_curve = true;
+				}
+				
+				else if (pointCount < 2) {
 					setErr("A valid level should contain at least two points!");
 					return;
 				}
 				
 				try {
-					for (let i = 0; i < pointCount; i++) {
-						let idx = i * 10 + 4 + curveOffset;
-						let point = {
-							x: dv.getInt32(idx, true),
-							y: dv.getInt32(idx + 4, true),
-							z: dv.getUint8(idx + 9, true),
-							t: dv.getUint8(idx + 8, true),
-							w: 0,
-						};
-						// unroll list of point flags
-						if (point.t >= 4) {point.t -= 4; point.absolute = 1;}
-						if (point.t >= 2) {point.t -= 2; point.teleport = 1;}
-						state.points.push(point);
+					if (!skip_small_curve) {
+						for (let i = 0; i < pointCount; i++) {
+							let idx = i * 10 + 4 + curveOffset;
+							let point = {
+								x: dv.getInt32(idx, true),
+								y: dv.getInt32(idx + 4, true),
+								z: dv.getUint8(idx + 9, true),
+								t: dv.getUint8(idx + 8, true),
+								w: 0,
+							};
+							// unroll list of point flags
+							if (point.t >= 4) {point.t -= 4; point.absolute = 1;}
+							if (point.t >= 2) {point.t -= 2; point.teleport = 1;}
+							state.points.push(point);
+						}
 					}
-
-					const off = curveOffset + 4 + (pointCount * 10);
+					//const off = curveOffset + 4 + (pointCount * 10);
+					const off = curveOffset + smallCurveSize;
 					const deltaCount = dv.getUint32(off, true);
 					const deltaStartX = dv.getFloat32(off + 4, true);
 					const deltaStartY = dv.getFloat32(off + 8, true);
-					console.log(deltaStartX, deltaStartY);
+					//console.log(deltaStartX, deltaStartY);
 					let posX = deltaStartX;
 					let posY = deltaStartY;
 					state.deltas.push({ x: posX, y: posY, z: 1, t: 0 });
@@ -1115,7 +1207,7 @@
 				let url = await readFileURL(bgEl.files[0]);
 				let image = new Image();
 				image.src = url;
-				image.onload = () => state.image = image;
+				image.onload = () => {state.image = image; state.ox = image.width;}
 				image.onerror = () => setErr("Error loading background image!");
 			};
 			bgEl.onchange = bgChange;
@@ -1138,6 +1230,7 @@
 							state.selectedPoint = i;
 							state.dragging = true;
 							state.savePreDrag = true;
+							refreshCurveInfo();
 							break;
 						}
 					}
@@ -1152,6 +1245,7 @@
 				e.preventDefault();
 				if (e.button === 0) {
 					state.dragging = false;
+					state.deltas = getDeltas(state.points);
 				}
 
 				if (e.button === 2) {
@@ -1179,6 +1273,7 @@
 
 					state.points[i].x = clampF32(x);
 					state.points[i].y = clampF32(y);
+					refreshCurveInfo();
 				}
 			};
 
@@ -1222,6 +1317,7 @@
 					{
 						state.points.splice(state.selectedPoint, 1);
 					}
+					refreshCurveInfo();
 					
 				} else if (e.key === "t" && state.selectedPoint !== -1) {
 					const pt = state.points[state.selectedPoint];
@@ -1335,7 +1431,13 @@
 				ctx.translate(xOff | 0, yOff | 0);
 				ctx.scale(scale, scale);
 				if (state.image != null && state.image.complete && disableBackground == false) {
-					ctx.drawImage(state.image, 0, 0);
+					if (screenOptions.centerBackground == true) {
+						ctx.drawImage(state.image, (screenOptions.width-state.ox)/2, 0);
+					}
+					else
+					{
+						ctx.drawImage(state.image, 0, 0);
+					}
 				}
 				else {
 					ctx.fillStyle = "#000000";
